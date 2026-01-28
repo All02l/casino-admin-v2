@@ -24,21 +24,34 @@
     </div>
 
     <script>
-       let tg = window.Telegram.WebApp;
+      let tg = window.Telegram.WebApp;
 tg.expand();
 
+// Функция для изменения курса (оставляем как была)
+function changeRate() {
+    let newRate = prompt("Введите новый курс вирт:");
+    if (newRate) {
+        tg.sendData("set_rate:" + newRate);
+    }
+}
+
+// НОВАЯ функция для управления серверами
 function changeServer() {
     let serverNum = prompt("Выберите номер сервера (1-33):");
+    
+    // Проверяем, что ввели число от 1 до 33
     if (serverNum && serverNum >= 1 && serverNum <= 33) {
-        let accountNum = prompt("Введите номер счета:");
-        let accountName = prompt("Введите название счета:");
+        let accountNum = prompt("Введите номер счёта:");
+        let accountName = prompt("Введите название счёта:");
         
         if (accountNum && accountName) {
-            // Отправляем боту всё одной строкой через разделитель |
-            tg.sendData(`server_change:${serverNum}|${accountNum}|${accountName}`);
+            // Отправляем всё одной строкой, разделяя знаком |
+            tg.sendData("set_server:" + serverNum + "|" + accountNum + "|" + accountName);
+        } else {
+            alert("Ошибка: Данные счета не заполнены!");
         }
-    } else {
-        alert("Ошибка: выберите сервер от 1 до 33");
+    } else if (serverNum) {
+        alert("Ошибка: Введите номер сервера от 1 до 33!");
     }
 }
     </script>
