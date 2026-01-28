@@ -3,74 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casino CRM</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { color: white; background: #1c1c1c; font-family: sans-serif; padding: 15px; margin: 0; }
-        .tabs { display: flex; gap: 5px; margin-bottom: 15px; background: #2c2c2c; padding: 5px; border-radius: 12px; }
-        .tab { flex: 1; padding: 10px; text-align: center; border-radius: 10px; cursor: pointer; color: #aaa; }
-        .tab.active { background: #0088cc; color: white; }
-        .card { background: #262626; padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid #444; }
-        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
-        .btn { flex: 1; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; }
+        body { color: white; background: #1c1c1c; font-family: -apple-system, system-ui, sans-serif; padding: 15px; margin: 0; overflow-x: hidden; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 15px; background: #2c2c2c; padding: 5px; border-radius: 12px; position: sticky; top: 10px; z-index: 10; border: 1px solid #3d3d3d; }
+        .tab { flex: 1; padding: 10px; text-align: center; border-radius: 10px; cursor: pointer; font-size: 12px; color: #aaa; transition: 0.2s; }
+        .tab.active { background: #0088cc; color: white; font-weight: bold; box-shadow: 0 2px 8px rgba(0,136,204,0.3); }
+        .card { background: #262626; padding: 15px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid #444; }
+        .card.pending { border-left-color: #f39c12; }
+        .header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 8px; font-size: 14px; }
+        .details { color: #bbb; font-size: 13px; line-height: 1.5; }
+        .details b { color: #0088cc; }
+        .btn-group { display: flex; gap: 8px; margin-top: 12px; }
+        .btn { flex: 1; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; transition: 0.1s; color: white; }
         .btn-confirm { background: #2ecc71; }
         .btn-decline { background: #e74c3c; }
+        .btn-main { background: #0088cc; width: 100%; padding: 16px; font-size: 16px; margin-top: 10px; border-radius: 12px; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center; color: white; font-weight: bold; }
+        .empty { text-align: center; color: #666; padding: 40px 0; }
         .hidden { display: none; }
     </style>
 </head>
 <body>
+    <div id="loader" class="loading-overlay">⏳ Отправка команды...</div>
+
     <div class="tabs">
-        <div id="t-active" class="tab active" onclick="show('active')">Заявки</div>
-        <div id="t-servers" class="tab" onclick="show('servers')">Сервера</div>
+        <div id="t-active" class="tab active" onclick="show('active')">⏳ Заявки</div>
+        <div id="t-closed" class="tab" onclick="show('closed')">✅ История</div>
+        <div id="t-servers" class="tab" onclick="show('servers')">🖥 Сервера</div>
     </div>
 
     <div id="view-active"><div id="list-active"></div></div>
-    <div id="view-servers" class="hidden"><div id="list-servers"></div></div>
+    <div id="view-closed" class="hidden"><div id="list-closed"></div></div>
+    <div id="view-servers" class="hidden">
+        <div id="list-servers"></div>
+        <button class="btn btn-main" onclick="addServer()">➕ Добавить сервер</button>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
         function show(tab) {
-            document.getElementById('view-active').classList.toggle('hidden', tab !== 'active');
-            document.getElementById('view-servers').classList.toggle('hidden', tab !== 'servers');
+            document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden'));
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('view-' + tab).classList.remove('hidden');
             document.getElementById('t-' + tab).classList.add('active');
         }
 
         function render() {
             const params = new URLSearchParams(window.location.search);
-            const rawOrders = decodeURIComponent(params.get('chats') || "");
-            const activeList = document.getElementById('list-active');
+            const rawOrders = decodeURIComponent(params.get('chats') || "none");
+            const rawServers = decodeURIComponent(params.get('data') || "none");
 
-            if (rawOrders && rawOrders !== "none") {
+            const activeList = document.getElementById('list-active');
+            const closedList = document.getElementById('list-closed');
+            const serverList = document.getElementById('list-servers');
+
+            activeList.innerHTML = ""; closedList.innerHTML = "";
+
+            if (rawOrders !== "none") {
                 rawOrders.split("|").forEach(order => {
+                    if(!order || order === "none") return;
                     const [id, name, amt, serv, status] = order.split(":");
-                    if (status === 'pending') {
-                        activeList.innerHTML += `
-                            <div class="card">
-                                <b>Заявка #${id}</b><br>
-                                <small>@${name} | ${amt} монеток</small>
+                    const html = `
+                        <div class="card ${status === 'pending' ? 'pending' : ''}">
+                            <div class="header">
+                                <span>Заявка #${id}</span>
+                                <span style="color:${status === 'pending' ? '#f39c12':'#2ecc71'}">${status === 'pending' ? 'ОЖИДАЕТ' : 'ГОТОВО'}</span>
+                            </div>
+                            <div class="details">Игрок: <b>@${name}</b><br>Сервер: <b>${serv}</b><br>Сумма: <b>${amt}</b></div>
+                            ${status === 'pending' ? `
                                 <div class="btn-group">
                                     <button class="btn btn-confirm" onclick="send('confirm:${id}')">Одобрить</button>
                                     <button class="btn btn-decline" onclick="send('delete:${id}')">Удалить</button>
                                 </div>
-                            </div>`;
-                    }
+                            ` : ''}
+                        </div>`;
+                    if (status === 'pending') activeList.innerHTML += html;
+                    else closedList.innerHTML += html;
                 });
+            }
+
+            if (!activeList.innerHTML) activeList.innerHTML = '<div class="empty">Нет активных заявок</div>';
+
+            if (rawServers !== "none") {
+                serverList.innerHTML = rawServers.split("|").map(s => {
+                    if(!s) return '';
+                    const [id, acc, nick] = s.split(":");
+                    return `<div class="card" style="border-left-color: #0088cc"><b>Сервер ${id}</b><br><small>Счет: ${acc} | ${nick}</small></div>`;
+                }).join("");
+            } else {
+                serverList.innerHTML = '<div class="empty">Серверов не найдено</div>';
             }
         }
 
-        async function send(command) {
-            tg.HapticFeedback.impactOccurred('heavy');
-            
-            // Если открыто инлайном, у нас есть query_id
-            if (tg.initDataUnsafe && tg.initDataUnsafe.query_id) {
-                // Это закроет окно и отправит результат боту через InlineQuery
-                tg.sendData(command); 
-            } else {
-                tg.sendData(command);
+        function send(data) {
+            tg.HapticFeedback.impactOccurred('medium');
+            document.getElementById('loader').style.display = 'flex';
+
+            // Пытаемся отправить данные боту
+            // Работает только если WebApp открыт через обычную кнопку (Reply)
+            tg.sendData(data);
+
+            // Если WebApp открыт ИНЛАЙНОМ, данные через sendData НЕ УЙДУТ.
+            // В таком случае админ просто увидит, что действие совершено,
+            // но в боте придется дублировать кнопками.
+
+            setTimeout(() => {
+                tg.close();
+            }, 600);
+        }
+
+        function addServer() {
+            const id = prompt("Номер сервера (1-33):");
+            const acc = prompt("Номер счета:");
+            const name = prompt("Ник получателя:");
+            if (id && acc && name) {
+                send(`set_server:${id}|${acc}|${name}`);
             }
-            tg.close();
         }
 
         render();
