@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { color: white; background: #1c1c1c; font-family: sans-serif; padding: 20px; }
+        .card { background: #2c2c2c; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
+        button { background: #0088cc; color: white; border: none; padding: 10px; width: 100%; border-radius: 5px; }
+        .status { color: #00ff00; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>управление Казино 🎰</h2>
+
+    <div class="card">
+        <h3>Курс: 1 монета = 20,000к</h3>
+        <button onclick="changeRate()">Изменить курс</button>
+    </div>
+
+    <div class="card">
+        <h3>Серверы (1-33)</h3>
+        <p>Активно: 33 сервера</p>
+        <button onclick="manageServers()">Настроить серверы</button>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // Развернуть на весь экран
+
+        function changeRate() {
+            let newRate = prompt("Введите новый курс вирт:");
+            if(newRate) tg.sendData("new_rate:" + newRate);
+        }
+    </script>
+</body>
+</html>
