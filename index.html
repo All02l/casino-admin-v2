@@ -4,70 +4,75 @@
     <meta charset="UTF-8">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { color: white; background: #1c1c1c; font-family: sans-serif; padding: 20px; text-align: center; }
+        body { color: white; background: #1c1c1c; font-family: sans-serif; padding: 15px; text-align: center; }
         .card { background: #2c2c2c; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
-        h2 { color: #0088cc; }
         .grid { display: grid; grid-template-columns: repeat(11, 1fr); gap: 4px; margin: 10px 0; }
-        .dot { height: 12px; border-radius: 2px; background: #444; }
-        .filled { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
+        .dot { height: 10px; border-radius: 2px; }
+        .filled { background: #00ff00; }
         .empty { background: #ff4444; }
-        button { 
-            background: #0088cc; color: white; border: none; 
-            padding: 12px; width: 100%; border-radius: 8px; 
-            font-weight: bold; cursor: pointer; margin-top: 10px;
-        }
-        button:active { background: #0077b3; }
-        p { font-size: 12px; color: #aaa; }
+        .server-list { text-align: left; font-size: 13px; max-height: 200px; overflow-y: auto; background: #111; padding: 10px; border-radius: 5px; }
+        .server-item { border-bottom: 1px solid #333; padding: 5px 0; }
+        .server-item span { color: #0088cc; font-weight: bold; }
+        button { background: #0088cc; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
     <h2>Управление Казино 🎰</h2>
 
     <div class="card">
-        <h3>📊 Статус серверов (1-33)</h3>
+        <h3>📊 Карта серверов</h3>
         <div id="server-grid" class="grid"></div>
-        <p id="stats-text">Загрузка данных...</p>
+        
+        <h3>📋 Реквизиты в базе:</h3>
+        <div id="details-list" class="server-list">Нет данных</div>
     </div>
 
     <div class="card">
+        <button onclick="manageServers()">🖥 Настроить / Изменить</button>
         <button onclick="changeRate()">💰 Изменить курс</button>
-        <button onclick="manageServers()">🖥 Настроить сервер</button>
     </div>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Рисуем сетку серверов
         const urlParams = new URLSearchParams(window.location.search);
+        
+        // 1. Рисуем сетку (точки)
         const stats = urlParams.get('stats') || "0".repeat(33);
         const grid = document.getElementById('server-grid');
-        let filledCount = 0;
-
         for (let i = 0; i < 33; i++) {
             let dot = document.createElement('div');
             dot.className = 'dot ' + (stats[i] === '1' ? 'filled' : 'empty');
-            if (stats[i] === '1') filledCount++;
             grid.appendChild(dot);
         }
-        document.getElementById('stats-text').innerText = `Заполнено: ${filledCount} из 33`;
 
-        function changeRate() {
-            let newRate = prompt("Введите новый курс:");
-            if (newRate) tg.sendData("set_rate:" + newRate.trim());
+        // 2. Выводим список текстом
+        const rawData = urlParams.get('data');
+        const listDiv = document.getElementById('details-list');
+        
+        if (rawData && rawData !== "none") {
+            listDiv.innerHTML = ""; // Очищаем
+            const servers = rawData.split("|");
+            servers.forEach(s => {
+                const [id, acc, name] = s.split(":");
+                listDiv.innerHTML += `<div class="server-item">🌐 Сервер <span>${id}</span>: Счёт ${acc} (${name})</div>`;
+            });
         }
 
-        async function manageServers() {
-            let serverNum = prompt("Шаг 1/3: Номер сервера (1-33):");
-            if (!serverNum || serverNum < 1 || serverNum > 33) return;
+        function manageServers() {
+            let s = prompt("Номер сервера (1-33):");
+            if (!s || s < 1 || s > 33) return;
+            let n = prompt("Номер счета:");
+            if (!n) return;
+            let u = prompt("Ник (название):");
+            if (!u) return;
+            tg.sendData(`set_server:${s}|${n}|${u}`);
+        }
 
-            let accNum = prompt("Шаг 2/3: Номер счёта для сервера " + serverNum + ":");
-            if (!accNum) return;
-
-            let accName = prompt("Шаг 3/3: Название счёта (ник):");
-            if (!accName) return;
-
-            tg.sendData(`set_server:${serverNum.trim()}|${accNum.trim()}|${accName.trim()}`);
+        function changeRate() {
+            let r = prompt("Новый курс:");
+            if (r) tg.sendData("set_rate:" + r);
         }
     </script>
 </body>
