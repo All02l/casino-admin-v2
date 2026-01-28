@@ -1,53 +1,61 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { color: white; background: #1c1c1c; font-family: sans-serif; padding: 15px; margin: 0; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-        .tab { flex: 1; padding: 10px; text-align: center; background: #333; border-radius: 8px; cursor: pointer; font-size: 14px; }
-        .tab.active { background: #0088cc; font-weight: bold; }
+        body { color: white; background: #1c1c1c; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 15px; margin: 0; }
         
-        .card { background: #2c2c2c; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #444; }
-        h3 { margin-top: 0; color: #0088cc; font-size: 16px; margin-bottom: 10px; }
+        /* Табы сверху */
+        .tabs { display: flex; gap: 8px; margin-bottom: 15px; background: #2c2c2c; padding: 5px; border-radius: 12px; }
+        .tab { flex: 1; padding: 10px; text-align: center; border-radius: 10px; cursor: pointer; font-size: 14px; transition: 0.3s; color: #aaa; }
+        .tab.active { background: #0088cc; color: white; font-weight: bold; }
         
-        .list-container { max-height: 60vh; overflow-y: auto; }
+        .card { background: #2c2c2c; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #3d3d3d; }
+        h3 { margin-top: 0; color: #0088cc; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #3d3d3d; padding-bottom: 8px; }
         
-        /* Стили для серверов */
-        .server-item { background: #111; padding: 12px; margin-bottom: 8px; border-radius: 8px; border-left: 4px solid #0088cc; font-size: 13px; }
-        
-        /* Стили для ЧАТОВ (как на скрине) */
-        .chat-item { background: #1a1a1a; padding: 12px; margin-bottom: 8px; border-radius: 8px; border-bottom: 1px solid #333; display: flex; flex-direction: column; }
-        .chat-item .user { font-weight: bold; color: #0088cc; font-size: 14px; margin-bottom: 4px; }
-        .chat-item .msg { color: #ccc; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .chat-item .time { font-size: 10px; color: #666; align-self: flex-end; }
+        .list-container { max-height: 65vh; overflow-y: auto; }
 
-        button { background: #0088cc; color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; font-size: 16px; }
+        /* Элемент сервера */
+        .server-item { background: #1a1a1a; padding: 12px; margin-bottom: 10px; border-radius: 10px; border-left: 4px solid #0088cc; font-size: 13px; line-height: 1.6; }
+        .server-item b { color: #0088cc; }
+
+        /* Элемент чата (как на скрине) */
+        .chat-item { background: #262626; padding: 12px; margin-bottom: 8px; border-radius: 10px; display: flex; flex-direction: column; position: relative; border-bottom: 1px solid #333; cursor: pointer; }
+        .chat-item:active { background: #333; }
+        .chat-item .user { font-weight: bold; color: #0088cc; font-size: 14px; margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .chat-item .msg { color: #b3b3b3; font-size: 13px; width: 85%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-item .time { font-size: 11px; color: #666; position: absolute; top: 12px; right: 12px; }
+
+        .empty { color: #666; text-align: center; padding: 20px; font-style: italic; }
+        button { background: #0088cc; color: white; border: none; padding: 16px; width: 100%; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.2s; }
+        button:active { transform: scale(0.98); opacity: 0.9; }
         .hidden { display: none; }
     </style>
 </head>
 <body>
     <div class="tabs">
-        <div class="tab active" onclick="switchTab('servers')">🖥 Сервера</div>
-        <div class="tab" onclick="switchTab('chats')">💬 Диалоги</div>
+        <div id="tab-btn-servers" class="tab active" onclick="switchTab('servers')">🖥 Сервера</div>
+        <div id="tab-btn-chats" class="tab" onclick="switchTab('chats')">💬 Диалоги</div>
     </div>
 
-    <div id="tab-servers">
+    <div id="view-servers">
         <div class="card">
-            <h3>Активные сервера</h3>
-            <div id="server-list" class="list-container">Загрузка...</div>
+            <h3>Активные реквизиты</h3>
+            <div id="server-list" class="list-container">Загрузка данных...</div>
         </div>
         <button onclick="addServer()">➕ Настроить сервер</button>
     </div>
 
-    <div id="tab-chats" class="hidden">
+    <div id="view-chats" class="hidden">
         <div class="card">
             <h3>Последние сообщения</h3>
-            <div id="chat-list" class="list-container">Нет сообщений</div>
+            <div id="chat-list" class="list-container">
+                <div class="empty">Список пуст</div>
+            </div>
         </div>
-        <p style="font-size: 12px; color: #666; text-align: center;">Нажмите на чат в боте, чтобы ответить</p>
+        <p style="font-size: 11px; color: #555; text-align: center;">Нажмите на чат, чтобы перейти в профиль игрока</p>
     </div>
 
     <script>
@@ -56,48 +64,81 @@
         tg.ready();
 
         const urlParams = new URLSearchParams(window.location.search);
-        
-        function switchTab(tab) {
-            document.getElementById('tab-servers').classList.toggle('hidden', tab !== 'servers');
-            document.getElementById('tab-chats').classList.toggle('hidden', tab !== 'chats');
-            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.innerText.toLowerCase().includes(tab === 'servers' ? 'сервер' : 'диалог')));
+
+        // Переключение вкладок
+        function switchTab(target) {
+            const isServers = target === 'servers';
+            document.getElementById('view-servers').classList.toggle('hidden', !isServers);
+            document.getElementById('view-chats').classList.toggle('hidden', isServers);
+            
+            document.getElementById('tab-btn-servers').classList.toggle('active', isServers);
+            document.getElementById('tab-btn-chats').classList.toggle('active', !isServers);
         }
 
-        // Рендер СЕРВЕРОВ
-        const rawData = urlParams.get('data');
-        const serverList = document.getElementById('server-list');
-        if (rawData && rawData !== "none") {
-            serverList.innerHTML = rawData.split("|").map(s => {
-                const [id, acc, name] = s.split(":");
-                return `<div class="server-item">🆔 Сервер: <b>${id}</b><br>💳 Счет: ${acc}<br>👤 Ник: ${name}</div>`;
-            }).join("");
-        } else {
-            serverList.innerHTML = "Сервера не настроены";
-        }
-
-        // Рендер ЧАТОВ
-        const chatsData = urlParams.get('chats');
-        const chatList = document.getElementById('chat-list');
-        if (chatsData && chatsData !== "none") {
-            chatList.innerHTML = chatsData.split("|").map(c => {
-                const [id, name, msg, time] = c.split(":");
-                return `
-                    <div class="chat-item">
-                        <div class="user">@${name} (ID: ${id})</div>
-                        <div class="msg">${msg}</div>
-                        <div class="time">${time}</div>
-                    </div>`;
-            }).join("");
-        }
-
-        function addServer() {
-            let id = prompt("Номер сервера:");
-            let acc = prompt("Номер счета:");
-            let name = prompt("Ник:");
-            if (id && acc && name) {
-                tg.sendData(`set_server:${id}|${acc}|${name}`);
-                tg.close();
+        // Отрисовка Серверов
+        function renderServers() {
+            const rawData = urlParams.get('data');
+            const container = document.getElementById('server-list');
+            
+            if (rawData && rawData !== "none" && rawData.trim() !== "") {
+                const servers = rawData.split("|");
+                container.innerHTML = servers.map(s => {
+                    const p = s.split(":");
+                    if (p.length === 3) {
+                        return `<div class="server-item">
+                            🆔 Сервер: <b>${p[0]}</b><br>
+                            💳 Счет: <code>${p[1]}</code><br>
+                            👤 Ник: ${p[2]}
+                        </div>`;
+                    }
+                    return "";
+                }).join("");
+            } else {
+                container.innerHTML = '<div class="empty">Сервера не настроены</div>';
             }
+        }
+
+        // Отрисовка Чатов (Диалогов)
+        function renderChats() {
+            const chatsData = urlParams.get('chats');
+            const container = document.getElementById('chat-list');
+            
+            if (chatsData && chatsData !== "none" && chatsData.trim() !== "") {
+                const chats = chatsData.split("|");
+                container.innerHTML = chats.map(c => {
+                    const p = c.split(":");
+                    // Ожидаем id:name:text:time (4 элемента)
+                    if (p.length === 4) {
+                        const [id, name, msg, time] = p;
+                        return `
+                            <div class="chat-item" onclick="window.location.href='tg://user?id=${id}'">
+                                <div class="user">${name}</div>
+                                <div class="msg">${msg}</div>
+                                <div class="time">${time}</div>
+                            </div>`;
+                    }
+                    return "";
+                }).join("");
+            } else {
+                container.innerHTML = '<div class="empty">Нет активных диалогов</div>';
+            }
+        }
+
+        // Запуск рендера
+        renderServers();
+        renderChats();
+
+        // Функция добавления сервера
+        function addServer() {
+            let id = prompt("Введите номер сервера (например, 4):");
+            if (!id) return;
+            let acc = prompt("Введите номер банковского счета:");
+            if (!acc) return;
+            let name = prompt("Введите ник получателя:");
+            if (!name) return;
+
+            tg.sendData(`set_server:${id}|${acc}|${name}`);
+            tg.close();
         }
     </script>
 </body>
