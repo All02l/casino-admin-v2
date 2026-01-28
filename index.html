@@ -24,13 +24,23 @@
     </div>
 
     <script>
-        let tg = window.Telegram.WebApp;
-        tg.expand(); // Развернуть на весь экран
+       let tg = window.Telegram.WebApp;
+tg.expand();
 
-        function changeRate() {
-            let newRate = prompt("Введите новый курс вирт:");
-            if(newRate) tg.sendData("new_rate:" + newRate);
+function changeServer() {
+    let serverNum = prompt("Выберите номер сервера (1-33):");
+    if (serverNum && serverNum >= 1 && serverNum <= 33) {
+        let accountNum = prompt("Введите номер счета:");
+        let accountName = prompt("Введите название счета:");
+        
+        if (accountNum && accountName) {
+            // Отправляем боту всё одной строкой через разделитель |
+            tg.sendData(`server_change:${serverNum}|${accountNum}|${accountName}`);
         }
+    } else {
+        alert("Ошибка: выберите сервер от 1 до 33");
+    }
+}
     </script>
 </body>
 </html>
