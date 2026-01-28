@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { color: white; background: #1c1c1c; font-family: -apple-system, system-ui, sans-serif; padding: 15px; margin: 0; }
-        .tabs { display: flex; gap: 5px; margin-bottom: 15px; background: #2c2c2c; padding: 5px; border-radius: 12px; position: sticky; top: 10px; z-index: 10; }
+        body { color: white; background: #1c1c1c; font-family: -apple-system, system-ui, sans-serif; padding: 15px; margin: 0; overflow-x: hidden; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 15px; background: #2c2c2c; padding: 5px; border-radius: 12px; position: sticky; top: 10px; z-index: 10; border: 1px solid #3d3d3d; }
         .tab { flex: 1; padding: 10px; text-align: center; border-radius: 10px; cursor: pointer; font-size: 12px; color: #aaa; transition: 0.2s; }
-        .tab.active { background: #0088cc; color: white; font-weight: bold; }
+        .tab.active { background: #0088cc; color: white; font-weight: bold; box-shadow: 0 2px 8px rgba(0,136,204,0.3); }
         
-        .card { background: #262626; padding: 15px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid #444; }
+        .card { background: #262626; padding: 15px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid #444; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
         .card.pending { border-left-color: #f39c12; }
         .card.closed { border-left-color: #2ecc71; opacity: 0.8; }
         
@@ -19,34 +21,29 @@
         .details b { color: #0088cc; }
         
         .btn-group { display: flex; gap: 8px; margin-top: 12px; }
-        .btn { flex: 1; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .btn { flex: 1; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; transition: 0.1s; }
+        .btn:active { transform: scale(0.96); }
         .btn-confirm { background: #2ecc71; color: white; }
         .btn-decline { background: #e74c3c; color: white; }
-        .btn-main { background: #0088cc; color: white; width: 100%; padding: 15px; font-size: 16px; margin-top: 10px; border-radius: 12px; }
+        .btn-main { background: #0088cc; color: white; width: 100%; padding: 16px; font-size: 16px; margin-top: 10px; border-radius: 12px; }
 
         .empty { text-align: center; color: #666; padding: 40px 0; font-style: italic; }
         .hidden { display: none; }
-        .status-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #333; }
+        .status-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #333; text-transform: uppercase; }
     </style>
 </head>
 <body>
     <div class="tabs">
-        <div id="t-active" class="tab active" onclick="show('active')">⏳ В процессе</div>
-        <div id="t-closed" class="tab" onclick="show('closed')">✅ Закрытые</div>
+        <div id="t-active" class="tab active" onclick="show('active')">⏳ Ожидают</div>
+        <div id="t-closed" class="tab" onclick="show('closed')">✅ История</div>
         <div id="t-servers" class="tab" onclick="show('servers')">🖥 Сервера</div>
     </div>
 
-    <div id="view-active">
-        <div id="list-active"></div>
-    </div>
-
-    <div id="view-closed" class="hidden">
-        <div id="list-closed"></div>
-    </div>
-
+    <div id="view-active"><div id="list-active"></div></div>
+    <div id="view-closed" class="hidden"><div id="list-closed"></div></div>
     <div id="view-servers" class="hidden">
         <div id="list-servers"></div>
-        <button class="btn btn-main" onclick="addServer()">➕ Настроить сервер</button>
+        <button class="btn btn-main" onclick="addServer()">➕ Добавить сервер</button>
     </div>
 
     <script>
@@ -59,10 +56,10 @@
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.getElementById('view-' + tab).classList.remove('hidden');
             document.getElementById('t-' + tab).classList.add('active');
+            tg.HapticFeedback.impactOccurred('light');
         }
 
         function render() {
-            // Данные от Python: id:name:amount:server:status
             const rawOrders = decodeURIComponent(params.get('chats') || "none");
             const rawServers = decodeURIComponent(params.get('data') || "none");
 
@@ -70,7 +67,6 @@
             const closedList = document.getElementById('list-closed');
             const serverList = document.getElementById('list-servers');
 
-            // Рендер заявок
             if (rawOrders !== "none") {
                 activeList.innerHTML = ""; closedList.innerHTML = "";
                 rawOrders.split("|").forEach(order => {
@@ -80,7 +76,7 @@
                         <div class="card ${status === 'pending' ? 'pending' : 'closed'}">
                             <div class="header">
                                 <span>Заявка #${id}</span>
-                                <span class="status-badge">${status === 'pending' ? 'ОЖИДАЕТ' : 'ГОТОВО'}</span>
+                                <span class="status-badge" style="color:${status === 'pending' ? '#f39c12':'#2ecc71'}">${status === 'pending' ? 'Ожидает' : 'Готово'}</span>
                             </div>
                             <div class="details">
                                 Игрок: <b>@${name}</b><br>
@@ -89,26 +85,24 @@
                             </div>
                             ${status === 'pending' ? `
                                 <div class="btn-group">
-                                    <button class="btn btn-confirm" onclick="send('confirm_dep:${id}')">✅ Одобрить</button>
-                                    <button class="btn btn-decline" onclick="send('decline_dep:${id}')">❌ Отклонить</button>
+                                    <button class="btn btn-confirm" onclick="send('confirm_dep:${id}')">Одобрить</button>
+                                    <button class="btn btn-decline" onclick="send('decline_dep:${id}')">Удалить</button>
                                 </div>
                             ` : ''}
                         </div>`;
-                    
                     if (status === 'pending') activeList.innerHTML += html;
                     else closedList.innerHTML += html;
                 });
             }
-            if (!activeList.innerHTML) activeList.innerHTML = '<div class="empty">Нет активных заявок</div>';
+            if (!activeList.innerHTML) activeList.innerHTML = '<div class="empty">Активных заявок нет</div>';
             if (!closedList.innerHTML) closedList.innerHTML = '<div class="empty">История пуста</div>';
 
-            // Рендер серверов
             if (rawServers !== "none") {
                 serverList.innerHTML = rawServers.split("|").map(s => {
                     const [id, acc, nick] = s.split(":");
                     return `<div class="card" style="border-left-color:#0088cc">
                         <b>Сервер ${id}</b><br>
-                        <span style="font-size:12px; color:#aaa">Счет: ${acc} | Ник: ${nick}</span>
+                        <span style="font-size:12px; color:#aaa">Счет: ${acc} | Получатель: ${nick}</span>
                     </div>`;
                 }).join("");
             } else {
@@ -117,8 +111,12 @@
         }
 
         function send(data) {
+            tg.HapticFeedback.notificationOccurred('success');
             tg.sendData(data);
-            tg.close();
+            // Визуальный лоадер перед закрытием
+            document.body.style.opacity = '0.5';
+            document.body.style.pointerEvents = 'none';
+            setTimeout(() => { tg.close(); }, 100);
         }
 
         function addServer() {
