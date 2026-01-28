@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casino CRM</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { color: white; background: #1c1c1c; font-family: -apple-system, system-ui, sans-serif; padding: 15px; margin: 0; overflow-x: hidden; }
@@ -25,10 +26,10 @@
     </style>
 </head>
 <body>
-    <div id="loader" class="loading-overlay">⏳ Сохранение в базу...</div>
+    <div id="loader" class="loading-overlay">⏳ Отправка команды...</div>
 
     <div class="tabs">
-        <div id="t-active" class="tab active" onclick="show('active')">⏳ Ожидают</div>
+        <div id="t-active" class="tab active" onclick="show('active')">⏳ Заявки</div>
         <div id="t-closed" class="tab" onclick="show('closed')">✅ История</div>
         <div id="t-servers" class="tab" onclick="show('servers')">🖥 Сервера</div>
     </div>
@@ -64,7 +65,7 @@
 
             if (rawOrders !== "none") {
                 rawOrders.split("|").forEach(order => {
-                    if(!order) return;
+                    if(!order || order === "none") return;
                     const [id, name, amt, serv, status] = order.split(":");
                     const html = `
                         <div class="card ${status === 'pending' ? 'pending' : ''}">
@@ -74,7 +75,7 @@
                             </div>
                             <div class="details">Игрок: <b>@${name}</b><br>Сервер: <b>${serv}</b><br>Сумма: <b>${amt}</b></div>
                             ${status === 'pending' ? `
-                                <div class="btn-group" id="group-${id}">
+                                <div class="btn-group">
                                     <button class="btn btn-confirm" onclick="send('confirm:${id}')">Одобрить</button>
                                     <button class="btn btn-decline" onclick="send('delete:${id}')">Удалить</button>
                                 </div>
@@ -85,28 +86,34 @@
                 });
             }
             
-            if (!activeList.innerHTML) activeList.innerHTML = '<div class="empty">Нет заявок</div>';
+            if (!activeList.innerHTML) activeList.innerHTML = '<div class="empty">Нет активных заявок</div>';
 
             if (rawServers !== "none") {
                 serverList.innerHTML = rawServers.split("|").map(s => {
+                    if(!s) return '';
                     const [id, acc, nick] = s.split(":");
-                    return `<div class="card"><b>Сервер ${id}</b><br><small>Счет: ${acc} | ${nick}</small></div>`;
+                    return `<div class="card" style="border-left-color: #0088cc"><b>Сервер ${id}</b><br><small>Счет: ${acc} | ${nick}</small></div>`;
                 }).join("");
+            } else {
+                serverList.innerHTML = '<div class="empty">Серверов не найдено</div>';
             }
         }
 
         function send(data) {
-            tg.HapticFeedback.notificationOccurred('success');
+            tg.HapticFeedback.impactOccurred('medium');
             document.getElementById('loader').style.display = 'flex';
             
-            // ВАЖНО: Мы отправляем данные. 
-            // Кнопка в боте должна быть KeyboardButton (Menu), НЕ Inline!
+            // Пытаемся отправить данные боту
+            // Работает только если WebApp открыт через обычную кнопку (Reply)
             tg.sendData(data);
             
-            // Увеличиваем задержку, чтобы данные успели уйти
+            // Если WebApp открыт ИНЛАЙНОМ, данные через sendData НЕ УЙДУТ.
+            // В таком случае админ просто увидит, что действие совершено, 
+            // но в боте придется дублировать кнопками.
+            
             setTimeout(() => {
                 tg.close();
-            }, 1000);
+            }, 600);
         }
 
         function addServer() {
