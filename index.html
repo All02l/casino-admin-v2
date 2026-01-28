@@ -5,127 +5,130 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { color: white; background: #1c1c1c; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 15px; margin: 0; }
-        
-        .tabs { display: flex; gap: 8px; margin-bottom: 15px; background: #2c2c2c; padding: 5px; border-radius: 12px; }
-        .tab { flex: 1; padding: 10px; text-align: center; border-radius: 10px; cursor: pointer; font-size: 14px; transition: 0.3s; color: #aaa; }
+        body { color: white; background: #1c1c1c; font-family: -apple-system, system-ui, sans-serif; padding: 15px; margin: 0; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 15px; background: #2c2c2c; padding: 5px; border-radius: 12px; position: sticky; top: 10px; z-index: 10; }
+        .tab { flex: 1; padding: 10px; text-align: center; border-radius: 10px; cursor: pointer; font-size: 12px; color: #aaa; transition: 0.2s; }
         .tab.active { background: #0088cc; color: white; font-weight: bold; }
         
-        .card { background: #2c2c2c; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #3d3d3d; }
-        h3 { margin-top: 0; color: #0088cc; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #3d3d3d; padding-bottom: 8px; }
+        .card { background: #262626; padding: 15px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid #444; }
+        .card.pending { border-left-color: #f39c12; }
+        .card.closed { border-left-color: #2ecc71; opacity: 0.8; }
         
-        .list-container { max-height: 65vh; overflow-y: auto; }
+        .header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 8px; font-size: 14px; }
+        .details { color: #bbb; font-size: 13px; line-height: 1.5; }
+        .details b { color: #0088cc; }
+        
+        .btn-group { display: flex; gap: 8px; margin-top: 12px; }
+        .btn { flex: 1; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .btn-confirm { background: #2ecc71; color: white; }
+        .btn-decline { background: #e74c3c; color: white; }
+        .btn-main { background: #0088cc; color: white; width: 100%; padding: 15px; font-size: 16px; margin-top: 10px; border-radius: 12px; }
 
-        /* Элемент сервера */
-        .server-item { background: #1a1a1a; padding: 12px; margin-bottom: 10px; border-radius: 10px; border-left: 4px solid #0088cc; font-size: 13px; }
-
-        /* Элемент ЗАЯВКИ (Оранжевая полоса - внимание) */
-        .order-item { background: #262626; padding: 12px; margin-bottom: 10px; border-radius: 10px; border-left: 4px solid #f39c12; position: relative; }
-        .order-item .header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
-        .order-item .details { color: #bbb; font-size: 13px; line-height: 1.4; }
-        .order-item b { color: #f39c12; }
-
-        .empty { color: #666; text-align: center; padding: 20px; font-style: italic; }
-        button { background: #0088cc; color: white; border: none; padding: 16px; width: 100%; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .empty { text-align: center; color: #666; padding: 40px 0; font-style: italic; }
         .hidden { display: none; }
+        .status-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #333; }
     </style>
 </head>
 <body>
     <div class="tabs">
-        <div id="tab-btn-servers" class="tab active" onclick="switchTab('servers')">🖥 Сервера</div>
-        <div id="tab-btn-orders" class="tab" onclick="switchTab('orders')">💰 Заявки</div>
+        <div id="t-active" class="tab active" onclick="show('active')">⏳ В процессе</div>
+        <div id="t-closed" class="tab" onclick="show('closed')">✅ Закрытые</div>
+        <div id="t-servers" class="tab" onclick="show('servers')">🖥 Сервера</div>
     </div>
 
-    <div id="view-servers">
-        <div class="card">
-            <h3>Реквизиты серверов</h3>
-            <div id="server-list" class="list-container">Загрузка...</div>
-        </div>
-        <button onclick="addServer()">➕ Настроить сервер</button>
+    <div id="view-active">
+        <div id="list-active"></div>
     </div>
 
-    <div id="view-orders" class="hidden">
-        <div class="card">
-            <h3>Ожидают проверки</h3>
-            <div id="order-list" class="list-container">
-                <div class="empty">Заявок нет</div>
-            </div>
-        </div>
-        <p style="font-size: 11px; color: #555; text-align: center;">Подтвердите оплату в чате бота с помощью кнопок под фото</p>
+    <div id="view-closed" class="hidden">
+        <div id="list-closed"></div>
+    </div>
+
+    <div id="view-servers" class="hidden">
+        <div id="list-servers"></div>
+        <button class="btn btn-main" onclick="addServer()">➕ Настроить сервер</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.ready();
+        const params = new URLSearchParams(window.location.search);
 
-        const urlParams = new URLSearchParams(window.location.search);
-
-        function switchTab(target) {
-            const isServers = target === 'servers';
-            document.getElementById('view-servers').classList.toggle('hidden', !isServers);
-            document.getElementById('view-orders').classList.toggle('hidden', isServers);
-            document.getElementById('tab-btn-servers').classList.toggle('active', isServers);
-            document.getElementById('tab-btn-orders').classList.toggle('active', !isServers);
+        function show(tab) {
+            document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('view-' + tab).classList.remove('hidden');
+            document.getElementById('t-' + tab).classList.add('active');
         }
 
-        // Рендер серверов (с декодированием)
-        function renderServers() {
-            let rawData = urlParams.get('data');
-            if (!rawData) return;
-            rawData = decodeURIComponent(rawData); // Декодируем из Python quote
-            
-            const container = document.getElementById('server-list');
-            if (rawData !== "none") {
-                container.innerHTML = rawData.split("|").map(s => {
-                    const p = s.split(":");
-                    return `<div class="server-item">🆔 Сервер: <b>${p[0]}</b><br>💳 Счет: ${p[1]}<br>👤 Ник: ${p[2]}</div>`;
-                }).join("");
+        function render() {
+            // Данные от Python: id:name:amount:server:status
+            const rawOrders = decodeURIComponent(params.get('chats') || "none");
+            const rawServers = decodeURIComponent(params.get('data') || "none");
+
+            const activeList = document.getElementById('list-active');
+            const closedList = document.getElementById('list-closed');
+            const serverList = document.getElementById('list-servers');
+
+            // Рендер заявок
+            if (rawOrders !== "none") {
+                activeList.innerHTML = ""; closedList.innerHTML = "";
+                rawOrders.split("|").forEach(order => {
+                    const [id, name, amt, serv, status] = order.split(":");
+                    const virt = amt * 20000;
+                    const html = `
+                        <div class="card ${status === 'pending' ? 'pending' : 'closed'}">
+                            <div class="header">
+                                <span>Заявка #${id}</span>
+                                <span class="status-badge">${status === 'pending' ? 'ОЖИДАЕТ' : 'ГОТОВО'}</span>
+                            </div>
+                            <div class="details">
+                                Игрок: <b>@${name}</b><br>
+                                Сервер: <b>${serv}</b><br>
+                                Сумма: <b>${amt} монет</b> (${virt.toLocaleString()} вирт)
+                            </div>
+                            ${status === 'pending' ? `
+                                <div class="btn-group">
+                                    <button class="btn btn-confirm" onclick="send('confirm_dep:${id}')">✅ Одобрить</button>
+                                    <button class="btn btn-decline" onclick="send('decline_dep:${id}')">❌ Отклонить</button>
+                                </div>
+                            ` : ''}
+                        </div>`;
+                    
+                    if (status === 'pending') activeList.innerHTML += html;
+                    else closedList.innerHTML += html;
+                });
             }
-        }
+            if (!activeList.innerHTML) activeList.innerHTML = '<div class="empty">Нет активных заявок</div>';
+            if (!closedList.innerHTML) closedList.innerHTML = '<div class="empty">История пуста</div>';
 
-        // Рендер ЗАЯВОК (с декодированием)
-        function renderOrders() {
-            let ordersData = urlParams.get('chats'); // Параметр chats теперь хранит заявки
-            if (!ordersData) return;
-            ordersData = decodeURIComponent(ordersData); 
-
-            const container = document.getElementById('order-list');
-            if (ordersData !== "none" && ordersData !== "too_long") {
-                container.innerHTML = ordersData.split("|").map(o => {
-                    const p = o.split(":"); // dep_id:name:amount:server
-                    if (p.length === 4) {
-                        return `
-                            <div class="order-item">
-                                <div class="header">
-                                    <span>Заявка #${p[0]}</span>
-                                    <span>${p[2]} монет</span>
-                                </div>
-                                <div class="details">
-                                    Игрок: <b>@${p[1]}</b><br>
-                                    Сервер: <b>${p[3]}</b>
-                                </div>
-                            </div>`;
-                    }
-                    return "";
+            // Рендер серверов
+            if (rawServers !== "none") {
+                serverList.innerHTML = rawServers.split("|").map(s => {
+                    const [id, acc, nick] = s.split(":");
+                    return `<div class="card" style="border-left-color:#0088cc">
+                        <b>Сервер ${id}</b><br>
+                        <span style="font-size:12px; color:#aaa">Счет: ${acc} | Ник: ${nick}</span>
+                    </div>`;
                 }).join("");
             } else {
-                container.innerHTML = '<div class="empty">Активных заявок нет</div>';
+                serverList.innerHTML = '<div class="empty">Сервера не настроены</div>';
             }
         }
 
-        renderServers();
-        renderOrders();
+        function send(data) {
+            tg.sendData(data);
+            tg.close();
+        }
 
         function addServer() {
-            let id = prompt("Номер сервера:");
-            let acc = prompt("Номер счета:");
-            let name = prompt("Ник:");
-            if (id && acc && name) {
-                tg.sendData(`set_server:${id}|${acc}|${name}`);
-                tg.close();
-            }
+            const id = prompt("Номер сервера (1-33):");
+            const acc = prompt("Номер счета:");
+            const name = prompt("Ник получателя:");
+            if (id && acc && name) send(`set_server:${id}|${acc}|${name}`);
         }
+
+        render();
     </script>
 </body>
 </html>
