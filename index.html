@@ -5,34 +5,183 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { color: white; background: #1c1c1c; font-family: -apple-system, system-ui, sans-serif; padding: 15px; margin: 0; }
-        .tabs { display: flex; gap: 5px; margin-bottom: 15px; background: #2c2c2c; padding: 5px; border-radius: 12px; position: sticky; top: 10px; z-index: 10; }
-        .tab { flex: 1; padding: 10px; text-align: center; border-radius: 10px; cursor: pointer; font-size: 11px; color: #aaa; transition: 0.2s; text-transform: uppercase; }
-        .tab.active { background: #0088cc; color: white; font-weight: bold; }
-        
-        .card { background: #262626; padding: 15px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid #444; }
-        .card.deposit { border-left-color: #2ecc71; } /* Зеленый для пополнений */
-        .card.withdraw { border-left-color: #e67e22; } /* Оранжевый для выводов */
-        
-        .header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 8px; font-size: 14px; }
-        .details { color: #bbb; font-size: 13px; line-height: 1.5; }
-        .details b { color: #0088cc; }
-        
-        .btn-group { display: flex; gap: 8px; margin-top: 12px; }
-        .btn { flex: 1; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
-        .btn-confirm { background: #2ecc71; color: white; }
-        .btn-decline { background: #e74c3c; color: white; }
-        .btn-main { background: #0088cc; color: white; width: 100%; padding: 15px; font-size: 16px; margin-top: 10px; border-radius: 12px; }
+        :root {
+            --bg: #0f1216;
+            --card-bg: #1e2329;
+            --accent: #0088cc;
+            --success: #00c853;
+            --error: #ff3d00;
+            --warning: #ffab00;
+            --text-main: #ffffff;
+            --text-dim: #90a4ae;
+        }
 
-        .empty { text-align: center; color: #666; padding: 40px 0; font-style: italic; }
+        body { 
+            color: var(--text-main); 
+            background: var(--bg); 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            padding: 15px; 
+            margin: 0; 
+            overflow-x: hidden;
+        }
+
+        /* Красивый фон на заднем плане */
+        body::before {
+            content: "";
+            position: fixed;
+            top: -50px; right: -50px;
+            width: 200px; height: 200px;
+            background: var(--accent);
+            filter: blur(100px);
+            opacity: 0.15;
+            z-index: -1;
+        }
+
+        .tabs { 
+            display: flex; 
+            gap: 8px; 
+            margin-bottom: 20px; 
+            background: rgba(255, 255, 255, 0.05); 
+            padding: 6px; 
+            border-radius: 16px; 
+            backdrop-filter: blur(10px);
+            position: sticky; 
+            top: 10px; 
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tab { 
+            flex: 1; 
+            padding: 12px 5px; 
+            text-align: center; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            font-size: 11px; 
+            font-weight: 600;
+            color: var(--text-dim); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tab.active { 
+            background: var(--accent); 
+            color: white; 
+            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .card { 
+            background: var(--card-bg); 
+            padding: 18px; 
+            border-radius: 20px; 
+            margin-bottom: 15px; 
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            animation: slideIn 0.4s ease-out forwards;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card::after {
+            content: "";
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 5px;
+        }
+
+        .card.deposit::after { background: var(--success); }
+        .card.withdraw::after { background: var(--warning); }
+        .card.server::after { background: var(--accent); }
+
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            margin-bottom: 12px; 
+        }
+
+        .id-badge {
+            background: rgba(255, 255, 255, 0.07);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: monospace;
+            color: var(--accent);
+        }
+
+        .status-badge { 
+            font-size: 10px; 
+            font-weight: 800;
+            padding: 4px 8px; 
+            border-radius: 6px; 
+            background: rgba(0,0,0,0.3);
+            letter-spacing: 1px;
+        }
+
+        .details { 
+            color: var(--text-dim); 
+            font-size: 14px; 
+            line-height: 1.6; 
+        }
+        
+        .details b { color: #fff; font-weight: 600; }
+        .price-tag {
+            display: inline-block;
+            margin-top: 5px;
+            color: var(--success);
+            font-weight: 800;
+            font-size: 16px;
+        }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 18px; }
+        
+        .btn { 
+            flex: 1; 
+            border: none; 
+            padding: 12px; 
+            border-radius: 12px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            font-size: 13px; 
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .btn-confirm { background: var(--success); color: white; }
+        .btn-confirm:active { transform: scale(0.96); filter: brightness(1.2); }
+
+        .btn-decline { background: rgba(231, 76, 60, 0.15); color: #ff5252; border: 1px solid rgba(255, 82, 82, 0.3); }
+        .btn-decline:active { transform: scale(0.96); background: var(--error); color: white; }
+
+        .btn-main { 
+            background: linear-gradient(135deg, var(--accent), #00d2ff); 
+            color: white; 
+            width: 100%; 
+            padding: 16px; 
+            font-size: 16px; 
+            margin-top: 10px; 
+            border-radius: 16px;
+            box-shadow: 0 5px 15px rgba(0, 136, 204, 0.3);
+        }
+
+        .empty { text-align: center; color: var(--text-dim); padding: 60px 0; font-style: italic; opacity: 0.5; }
         .hidden { display: none; }
-        .status-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #333; }
     </style>
 </head>
 <body>
     <div class="tabs">
-        <div id="t-deposits" class="tab active" onclick="show('deposits')">📥 Пополнения</div>
-        <div id="t-withdraws" class="tab" onclick="show('withdraws')">📤 Выводы</div>
+        <div id="t-deposits" class="tab active" onclick="show('deposits')">📥 Пополнение</div>
+        <div id="t-withdraws" class="tab" onclick="show('withdraws')">📤 Вывод</div>
         <div id="t-servers" class="tab" onclick="show('servers')">🖥 Сервера</div>
     </div>
 
@@ -46,12 +195,14 @@
 
     <div id="view-servers" class="hidden">
         <div id="list-servers"></div>
-        <button class="btn btn-main" onclick="addServer()">➕ Настроить сервер</button>
+        <button class="btn btn-main" onclick="addServer()">➕ Настроить новый сервер</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
+        tg.setHeaderColor('#0f1216');
+        
         const params = new URLSearchParams(window.location.search);
 
         function show(tab) {
@@ -59,6 +210,7 @@
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.getElementById('view-' + tab).classList.remove('hidden');
             document.getElementById('t-' + tab).classList.add('active');
+            tg.HapticFeedback.impactOccurred('light');
         }
 
         function render() {
@@ -73,27 +225,27 @@
                 depList.innerHTML = ""; wdrList.innerHTML = "";
                 rawOrders.split("|").forEach(order => {
                     const [id, name, amt, serv, status, type] = order.split(":"); 
-                    // Примечание: Чтобы это работало идеально, Python должен передавать тип (dep/wdr)
-                    // Если Python пока не шлет тип, мы временно делим по статусу или сумме
-                    
                     const virt = amt * 20000;
-                    const isWithdraw = (type === 'withdraw' || status === 'withdraw_pending'); // Логика определения
+                    const isWithdraw = (type === 'withdraw' || status.includes('withdraw'));
 
                     const html = `
                         <div class="card ${isWithdraw ? 'withdraw' : 'deposit'}">
                             <div class="header">
-                                <span>${isWithdraw ? 'Вывод' : 'Пополнение'} #${id}</span>
-                                <span class="status-badge">${status.toUpperCase()}</span>
+                                <span class="id-badge">#${id}</span>
+                                <span class="status-badge" style="color: ${isWithdraw ? '#ffab00' : '#00c853'}">
+                                    ${status.toUpperCase()}
+                                </span>
                             </div>
                             <div class="details">
-                                Игрок: <b>@${name}</b><br>
-                                ${serv !== '0' ? `Сервер: <b>${serv}</b><br>` : ''}
-                                Сумма: <b>${amt} коинов</b> (${virt.toLocaleString()} вирт)
+                                👤 Игрок: <b>@${name}</b><br>
+                                ${serv !== '0' && !isWithdraw ? `🎮 Сервер: <b>${serv}</b><br>` : ''}
+                                🪙 Сумма: <b>${amt} коинов</b><br>
+                                <span class="price-tag">💰 ${virt.toLocaleString()} вирт</span>
                             </div>
-                            ${status === 'pending' || status === 'withdraw_pending' ? `
+                            ${status === 'pending' || status.includes('pending') ? `
                                 <div class="btn-group">
-                                    <button class="btn btn-confirm" onclick="send('${isWithdraw ? 'wdr_done' : 'confirm_dep'}:${id}')">✅ Одобрить</button>
-                                    <button class="btn btn-decline" onclick="send('${isWithdraw ? 'wdr_cancel' : 'decline_dep'}:${id}')">❌ Отклонить</button>
+                                    <button class="btn btn-confirm" onclick="send('${isWithdraw ? 'wdr_done' : 'confirm_dep'}:${id}')">Одобрить</button>
+                                    <button class="btn btn-decline" onclick="send('${isWithdraw ? 'wdr_cancel' : 'decline_dep'}:${id}')">Отклонить</button>
                                 </div>
                             ` : ''}
                         </div>`;
@@ -103,31 +255,35 @@
                 });
             }
 
-            if (!depList.innerHTML) depList.innerHTML = '<div class="empty">Заявок на пополнение нет</div>';
-            if (!wdrList.innerHTML) wdrList.innerHTML = '<div class="empty">Заявок на вывод нет</div>';
+            if (!depList.innerHTML) depList.innerHTML = '<div class="empty">📭 Пополнений пока нет</div>';
+            if (!wdrList.innerHTML) wdrList.innerHTML = '<div class="empty">📭 Выводов пока нет</div>';
 
             if (rawServers !== "none") {
                 serverList.innerHTML = rawServers.split("|").map(s => {
                     const [id, acc, nick] = s.split(":");
-                    return `<div class="card" style="border-left-color:#0088cc">
-                        <b>Сервер ${id}</b><br>
-                        <span style="font-size:12px; color:#aaa">Счет: ${acc} | Ник: ${nick}</span>
+                    return `<div class="card server">
+                        <div class="header"><span class="id-badge">SERVER ${id}</span></div>
+                        <div class="details">
+                            💳 Счет: <b>${acc}</b><br>
+                            👤 Ник: <b>${nick}</b>
+                        </div>
                     </div>`;
                 }).join("");
             } else {
-                serverList.innerHTML = '<div class="empty">Сервера не настроены</div>';
+                serverList.innerHTML = '<div class="empty">🖥 Сервера не добавлены</div>';
             }
         }
 
         function send(data) {
+            tg.HapticFeedback.notificationOccurred('success');
             tg.sendData(data);
             tg.close();
         }
 
         function addServer() {
             const id = prompt("Номер сервера (1-33):");
-            const acc = prompt("Номер счета:");
-            const name = prompt("Ник получателя:");
+            const acc = prompt("Номер банковского счета:");
+            const name = prompt("Игровой ник (получатель):");
             if (id && acc && name) send(`set_server:${id}|${acc}|${name}`);
         }
 
