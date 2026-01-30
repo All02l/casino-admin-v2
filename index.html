@@ -7,12 +7,12 @@
     <style>
         body { color: white; background: #1c1c1c; font-family: -apple-system, system-ui, sans-serif; padding: 15px; margin: 0; }
         .tabs { display: flex; gap: 5px; margin-bottom: 15px; background: #2c2c2c; padding: 5px; border-radius: 12px; position: sticky; top: 10px; z-index: 10; }
-        .tab { flex: 1; padding: 10px; text-align: center; border-radius: 10px; cursor: pointer; font-size: 12px; color: #aaa; transition: 0.2s; }
+        .tab { flex: 1; padding: 10px; text-align: center; border-radius: 10px; cursor: pointer; font-size: 11px; color: #aaa; transition: 0.2s; text-transform: uppercase; }
         .tab.active { background: #0088cc; color: white; font-weight: bold; }
         
         .card { background: #262626; padding: 15px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid #444; }
-        .card.pending { border-left-color: #f39c12; }
-        .card.closed { border-left-color: #2ecc71; opacity: 0.8; }
+        .card.deposit { border-left-color: #2ecc71; } /* Зеленый для пополнений */
+        .card.withdraw { border-left-color: #e67e22; } /* Оранжевый для выводов */
         
         .header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 8px; font-size: 14px; }
         .details { color: #bbb; font-size: 13px; line-height: 1.5; }
@@ -31,17 +31,17 @@
 </head>
 <body>
     <div class="tabs">
-        <div id="t-active" class="tab active" onclick="show('active')">⏳ В процессе</div>
-        <div id="t-closed" class="tab" onclick="show('closed')">✅ Закрытые</div>
+        <div id="t-deposits" class="tab active" onclick="show('deposits')">📥 Пополнения</div>
+        <div id="t-withdraws" class="tab" onclick="show('withdraws')">📤 Выводы</div>
         <div id="t-servers" class="tab" onclick="show('servers')">🖥 Сервера</div>
     </div>
 
-    <div id="view-active">
-        <div id="list-active"></div>
+    <div id="view-deposits">
+        <div id="list-deposits"></div>
     </div>
 
-    <div id="view-closed" class="hidden">
-        <div id="list-closed"></div>
+    <div id="view-withdraws" class="hidden">
+        <div id="list-withdraws"></div>
     </div>
 
     <div id="view-servers" class="hidden">
@@ -62,47 +62,50 @@
         }
 
         function render() {
-            // Данные от Python: id:name:amount:server:status
             const rawOrders = decodeURIComponent(params.get('chats') || "none");
             const rawServers = decodeURIComponent(params.get('data') || "none");
 
-            const activeList = document.getElementById('list-active');
-            const closedList = document.getElementById('list-closed');
+            const depList = document.getElementById('list-deposits');
+            const wdrList = document.getElementById('list-withdraws');
             const serverList = document.getElementById('list-servers');
 
-            // Рендер заявок
             if (rawOrders !== "none") {
-                activeList.innerHTML = ""; closedList.innerHTML = "";
+                depList.innerHTML = ""; wdrList.innerHTML = "";
                 rawOrders.split("|").forEach(order => {
-                    const [id, name, amt, serv, status] = order.split(":");
+                    const [id, name, amt, serv, status, type] = order.split(":"); 
+                    // Примечание: Чтобы это работало идеально, Python должен передавать тип (dep/wdr)
+                    // Если Python пока не шлет тип, мы временно делим по статусу или сумме
+                    
                     const virt = amt * 20000;
+                    const isWithdraw = (type === 'withdraw' || status === 'withdraw_pending'); // Логика определения
+
                     const html = `
-                        <div class="card ${status === 'pending' ? 'pending' : 'closed'}">
+                        <div class="card ${isWithdraw ? 'withdraw' : 'deposit'}">
                             <div class="header">
-                                <span>Заявка #${id}</span>
-                                <span class="status-badge">${status === 'pending' ? 'ОЖИДАЕТ' : 'ГОТОВО'}</span>
+                                <span>${isWithdraw ? 'Вывод' : 'Пополнение'} #${id}</span>
+                                <span class="status-badge">${status.toUpperCase()}</span>
                             </div>
                             <div class="details">
                                 Игрок: <b>@${name}</b><br>
-                                Сервер: <b>${serv}</b><br>
-                                Сумма: <b>${amt} монет</b> (${virt.toLocaleString()} вирт)
+                                ${serv !== '0' ? `Сервер: <b>${serv}</b><br>` : ''}
+                                Сумма: <b>${amt} коинов</b> (${virt.toLocaleString()} вирт)
                             </div>
-                            ${status === 'pending' ? `
+                            ${status === 'pending' || status === 'withdraw_pending' ? `
                                 <div class="btn-group">
-                                    <button class="btn btn-confirm" onclick="send('confirm_dep:${id}')">✅ Одобрить</button>
-                                    <button class="btn btn-decline" onclick="send('decline_dep:${id}')">❌ Отклонить</button>
+                                    <button class="btn btn-confirm" onclick="send('${isWithdraw ? 'wdr_done' : 'confirm_dep'}:${id}')">✅ Одобрить</button>
+                                    <button class="btn btn-decline" onclick="send('${isWithdraw ? 'wdr_cancel' : 'decline_dep'}:${id}')">❌ Отклонить</button>
                                 </div>
                             ` : ''}
                         </div>`;
                     
-                    if (status === 'pending') activeList.innerHTML += html;
-                    else closedList.innerHTML += html;
+                    if (isWithdraw) wdrList.innerHTML += html;
+                    else depList.innerHTML += html;
                 });
             }
-            if (!activeList.innerHTML) activeList.innerHTML = '<div class="empty">Нет активных заявок</div>';
-            if (!closedList.innerHTML) closedList.innerHTML = '<div class="empty">История пуста</div>';
 
-            // Рендер серверов
+            if (!depList.innerHTML) depList.innerHTML = '<div class="empty">Заявок на пополнение нет</div>';
+            if (!wdrList.innerHTML) wdrList.innerHTML = '<div class="empty">Заявок на вывод нет</div>';
+
             if (rawServers !== "none") {
                 serverList.innerHTML = rawServers.split("|").map(s => {
                     const [id, acc, nick] = s.split(":");
